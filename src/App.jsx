@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from "react";
-import { Copy, Download, Shuffle, WandSparkles, Plus, Trash2 } from "lucide-react";
+import React, { useMemo, useState, useEffect } from "react";
+import { Copy, Check, WandSparkles, Shuffle } from "lucide-react";
 
-// Minimal in-file UI primitives (so it runs without external deps)
+// --- Minimal UI helpers (no external UI libs required) ---
 const Label = ({ children, htmlFor }) => (
   <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700 mb-1">{children}</label>
 );
@@ -16,57 +16,50 @@ const Select = ({ options, value, onChange, id }) => (
     {options.map(o=> <option key={o.value} value={o.value}>{o.label}</option>)}
   </select>
 );
-const Button = ({ children, icon:Icon, className, ...props }) => (
-  <button {...props} className={`rounded-2xl px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition inline-flex items-center gap-2 ${className||"bg-indigo-600 text-white"}`}>
-    {Icon && <Icon size={16} />} {children}
-  </button>
-);
-const Chip = ({ children, onRemove }) => (
-  <span className="inline-flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1 text-xs mr-2 mb-2">
-    {children}
-    {onRemove && <button onClick={onRemove} className="text-gray-500 hover:text-gray-700"><Trash2 size={12} /></button>}
-  </span>
+const Button = ({ children, className, ...props }) => (
+  <button {...props} className={`rounded-2xl px-4 py-2 text-sm font-medium shadow-sm hover:shadow transition inline-flex items-center gap-2 ${className||"bg-indigo-600 text-white"}`} />
 );
 
-// Presets
+// --- Simple router without dependencies (hash-based) ---
+function useHashRoute(defaultPath = "#/") {
+  const [path, setPath] = useState(window.location.hash || defaultPath);
+  useEffect(() => {
+    const onHash = () => setPath(window.location.hash || defaultPath);
+    window.addEventListener("hashchange", onHash);
+    if (!window.location.hash) window.location.hash = defaultPath;
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [defaultPath]);
+  return [path, (p)=>{ window.location.hash = p; }];
+}
+
+// --- Prompt builder logic (image mode) ---
 const STYLE_PRESETS = [
-  { label: "Photorealistic", value: "photorealistic, ultra-detailed, 35mm film" },
-  { label: "Cinematic", value: "cinematic lighting, shallow depth of field, anamorphic bokeh" },
-  { label: "Studio Portrait", value: "studio lighting, softbox, high dynamic range, 85mm lens" },
-  { label: "Watercolor", value: "delicate watercolor, soft washes, paper texture" },
-  { label: "Oil Painting", value: "impasto oil painting, rich brushwork, baroque lighting" },
+  { label: "Photorealistic", value: "photorealistic, ultra-detailed" },
+  { label: "Cinematic", value: "cinematic lighting, shallow depth of field" },
+  { label: "Studio Portrait", value: "studio lighting, softbox, HDR" },
+  { label: "Watercolor", value: "delicate watercolor, soft washes" },
   { label: "Anime", value: "anime style, crisp lineart, vibrant palette" },
   { label: "Isometric", value: "isometric view, clean vector shapes" },
 ];
-
-const ARTISTS = [
-  "Annie Leibovitz", "Greg Rutkowski", "Claude Monet", "Studio Ghibli", "Beeple", "H.R. Giger",
-];
-
-const CAMERA_LENSES = ["24mm", "35mm", "50mm", "85mm", "135mm", "macro", "tilt-shift"];
 const LIGHTING = ["golden hour", "softbox", "rim light", "volumetric", "neon", "overcast", "moonlit"];
 const COMPOSITIONS = ["rule of thirds", "centered", "leading lines", "top-down", "close-up", "wide shot"]; 
-const MATERIALS = ["glass", "chrome", "wood", "marble", "fabric", "smoke", "water"];
 const MOODS = ["serene", "dramatic", "mysterious", "playful", "melancholic", "epic"];
 
-function buildPrompt({subject, action, environment, stylePreset, mood, details, lens, lighting, composition, artists, materials, extras, negative, ar, quality, seed}){
+function buildPrompt({subject, action, environment, stylePreset, mood, details, lens, lighting, composition, extras, negative, ar, quality, seed}){
   const parts = [
     subject && subject.trim(),
     action && action.trim(),
     environment && environment.trim(),
     details && details.trim(),
-    materials.length ? `materials: ${materials.join(", ")}` : null,
     mood && `mood: ${mood}`,
     stylePreset && `style: ${stylePreset}`,
     lens && `lens: ${lens}`,
     lighting && `lighting: ${lighting}`,
     composition && `composition: ${composition}`,
-    artists.length ? `by ${artists.join(", ")}` : null,
     extras && extras.trim(),
   ].filter(Boolean);
 
   const main = parts.join(", ");
-
   const suffix = [
     ar && `--ar ${ar}`,
     quality && `--quality ${quality}`,
@@ -76,7 +69,71 @@ function buildPrompt({subject, action, environment, stylePreset, mood, details, 
   return suffix ? `${main} ${suffix}` : main;
 }
 
-export default function App(){
+// --- Reviews content (human, positive) ---
+const REVIEWS = [
+  {
+    name: "Sofia R.",
+    role: "Creative Director",
+    quote: "This finally fixed our prompt chaos. The output is consistent and our artists love it.",
+    stars: 5
+  },
+  {
+    name: "Daniel K.",
+    role: "Solo Maker",
+    quote: "I went from random results to reliable looks in a day. The presets are spot on.",
+    stars: 5
+  },
+  {
+    name: "Priya M.",
+    role: "Marketing Lead",
+    quote: "Our team ships assets faster and with fewer revisions. Huge time saver.",
+    stars: 5
+  }
+];
+
+// --- Pricing data ---
+const PLANS = [
+  {
+    name: "Free",
+    price: "$0",
+    tagline: "Great for getting started",
+    features: [
+      "Prompt builder (image mode)",
+      "Copy to clipboard",
+      "3 quick-starter templates",
+      "Email support (community)"
+    ],
+    cta: { label: "Start Free", href: "#/" }
+  },
+  {
+    name: "Pro",
+    price: "$9/mo",
+    tagline: "For creators who want more",
+    features: [
+      "Advanced presets & saved templates",
+      "One-click optimize button",
+      "Pricing & Reviews sections built-in",
+      "Early access to video mode"
+    ],
+    cta: { label: "Go Pro", href: "#/pricing" }
+  }
+];
+
+// --- Pages ---
+function Navbar({ path, navigate }){
+  return (
+    <div className="flex items-center justify-between py-4">
+      <div className="text-xl font-semibold">Prompt Workshop</div>
+      <nav className="flex items-center gap-3 text-sm">
+        <a href="#/" onClick={(e)=>{e.preventDefault();navigate('#/')}} className={`px-3 py-2 rounded-2xl ${path==="#/"?"bg-indigo-600 text-white":"hover:bg-gray-100"}`}>Home</a>
+        <a href="#/pricing" onClick={(e)=>{e.preventDefault();navigate('#/pricing')}} className={`px-3 py-2 rounded-2xl ${path==="#/pricing"?"bg-indigo-600 text-white":"hover:bg-gray-100"}`}>Pricing</a>
+      </nav>
+    </div>
+  );
+}
+
+function HomePage(){
+  // Input fields
   const [subject, setSubject] = useState("");
   const [action, setAction] = useState("");
   const [environment, setEnvironment] = useState("");
@@ -86,240 +143,171 @@ export default function App(){
   const [lens, setLens] = useState("");
   const [lighting, setLighting] = useState("");
   const [composition, setComposition] = useState("");
-  const [artists, setArtists] = useState([]);
-  const [materials, setMaterials] = useState([]);
   const [extras, setExtras] = useState("");
   const [negative, setNegative] = useState("blurry, low-resolution, watermark, extra fingers, deformed hands");
   const [ar, setAr] = useState("16:9");
   const [quality, setQuality] = useState("high");
   const [seed, setSeed] = useState("");
 
-  const [customTags, setCustomTags] = useState([]);
-  const [tagInput, setTagInput] = useState("");
-
-  const prompt = useMemo(()=>buildPrompt({subject, action, environment, stylePreset, mood, details, lens, lighting, composition, artists, materials:[...materials, ...customTags], extras, negative, ar, quality, seed: seed === "" ? undefined : Number(seed)}), [subject, action, environment, stylePreset, mood, details, lens, lighting, composition, artists, materials, extras, negative, ar, quality, seed, customTags]);
-
-  const jsonSchema = useMemo(()=>({
-    subject, action, environment, details, mood,
-    style: stylePreset, lens, lighting, composition,
-    artists, materials: [...materials, ...customTags], extras,
-    negative, params: { aspect_ratio: ar, quality, seed: seed === "" ? null : Number(seed) }
-  }), [subject, action, environment, details, mood, stylePreset, lens, lighting, composition, artists, materials, extras, negative, ar, quality, seed, customTags]);
-
-  const addArtist = (name) => setArtists(prev => Array.from(new Set([...prev, name])));
-  const removeArtist = (name) => setArtists(prev => prev.filter(a => a !== name));
-  const toggleList = (value, list, setList) => setList(list.includes(value) ? list.filter(v=>v!==value) : [...list, value]);
+  // Output box (only fills when user clicks Send)
+  const [optimized, setOptimized] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const randomize = () => {
     const r = (arr)=>arr[Math.floor(Math.random()*arr.length)];
     setStylePreset(r(STYLE_PRESETS).value);
     setMood(r(MOODS));
-    setLens(r(CAMERA_LENSES));
+    setLens(["24mm","35mm","50mm","85mm"][Math.floor(Math.random()*4)]);
     setLighting(r(LIGHTING));
     setComposition(r(COMPOSITIONS));
-    setAr(["1:1","3:2","4:5","16:9","21:9"][Math.floor(Math.random()*5)]);
+    setAr(["1:1","3:2","4:5","16:9","21:9","9:16"][Math.floor(Math.random()*6)]);
   };
 
-  const copy = async (text) => {
-    try { await navigator.clipboard.writeText(text); alert("Copied to clipboard"); } catch {}
-  }
+  const handleSend = () => {
+    const prompt = buildPrompt({
+      subject, action, environment, stylePreset, mood, details, lens, lighting, composition, extras, negative, ar, quality, seed: seed === "" ? undefined : Number(seed)
+    });
+    setOptimized(prompt);
+  };
 
-  const download = (filename, data) => {
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
-  }
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(optimized); setCopied(true); setTimeout(()=>setCopied(false), 1200); } catch {}
+  };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-white to-indigo-50 p-6">
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">Prompt Workshop</h1>
+    <div className="space-y-8">
+      {/* HERO */}
+      <section className="bg-white rounded-3xl p-6 shadow-sm">
+        <div className="grid md:grid-cols-2 gap-6 items-start">
+          {/* INPUT (left) */}
+          <div className="space-y-4">
+            <h1 className="text-2xl font-semibold mb-1">Build your prompt</h1>
+            <p className="text-sm text-gray-600 mb-3">Pure input → output. Fill the fields, hit Send, then copy your optimized prompt.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="subject">Subject (who/what)</Label>
+                <Input id="subject" placeholder="transparent dental aligner on a reflective surface" value={subject} onChange={(e)=>setSubject(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="action">Action</Label>
+                <Input id="action" placeholder="close-up on the front edge" value={action} onChange={(e)=>setAction(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="environment">Environment</Label>
+                <Input id="environment" placeholder="studio cyclorama, clean background" value={environment} onChange={(e)=>setEnvironment(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="style">Style preset</Label>
+                <Select id="style" value={stylePreset} onChange={setStylePreset} options={STYLE_PRESETS.map(p=>({label:p.label, value:p.value}))} />
+              </div>
+              <div>
+                <Label htmlFor="mood">Mood</Label>
+                <Select id="mood" value={mood} onChange={setMood} options={[{label:"—", value:""}, ...MOODS.map(m=>({label:m, value:m}))]} />
+              </div>
+              <div>
+                <Label htmlFor="details">Extra details</Label>
+                <Input id="details" placeholder="caustics, subsurface scattering, specular highlights" value={details} onChange={(e)=>setDetails(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="lens">Lens</Label>
+                <Input id="lens" placeholder="50mm" value={lens} onChange={(e)=>setLens(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="lighting">Lighting</Label>
+                <Select id="lighting" value={lighting} onChange={setLighting} options={[{label:"—", value:""}, ...LIGHTING.map(l=>({label:l, value:l}))]} />
+              </div>
+              <div>
+                <Label htmlFor="composition">Composition</Label>
+                <Select id="composition" value={composition} onChange={setComposition} options={[{label:"—", value:""}, ...COMPOSITIONS.map(c=>({label:c, value:c}))]} />
+              </div>
+              <div>
+                <Label htmlFor="ar">Aspect ratio</Label>
+                <Select id="ar" value={ar} onChange={setAr} options={["1:1","3:2","4:5","16:9","21:9","9:16"].map(v=>({label:v, value:v}))} />
+              </div>
+              <div>
+                <Label htmlFor="seed">Seed (optional)</Label>
+                <Input id="seed" placeholder="e.g. 12345" value={seed} onChange={(e)=>setSeed(e.target.value.replace(/[^0-9-]/g, ''))} />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="negative">Negative prompt</Label>
+                <Textarea id="negative" value={negative} onChange={(e)=>setNegative(e.target.value)} />
+              </div>
+              <div className="md:col-span-2 flex gap-2">
+                <Button onClick={randomize} className="bg-white text-gray-800 border"><Shuffle size={16}/> Surprise</Button>
+                <Button onClick={handleSend}><WandSparkles size={16}/> Send</Button>
+              </div>
+            </div>
+          </div>
+
+          {/* OUTPUT (right) */}
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold">Optimized Prompt</h2>
+            <Textarea readOnly value={optimized} className="min-h-[220px] font-mono" placeholder="Your prompt will appear here after you click Send." />
             <div className="flex gap-2">
-              <Button onClick={randomize} className="bg-white text-gray-800 border" icon={Shuffle}>Surprise me</Button>
-              <Button onClick={()=>copy(prompt)} icon={WandSparkles}>Copy Prompt</Button>
+              <Button onClick={copy} className="bg-white text-gray-800 border"><Copy size={16}/> {copied? "Copied" : "Copy"}</Button>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white rounded-2xl p-4 shadow-sm">
-            <div>
-              <Label htmlFor="subject">Subject (who/what)</Label>
-              <Input id="subject" placeholder="A silver fox sitting on a vintage Vespa" value={subject} onChange={(e)=>setSubject(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="action">Action</Label>
-              <Input id="action" placeholder="drinking espresso and reading a map" value={action} onChange={(e)=>setAction(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="environment">Environment</Label>
-              <Input id="environment" placeholder="on a cobblestone street in Rome, early morning" value={environment} onChange={(e)=>setEnvironment(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="style">Style preset</Label>
-              <Select id="style" value={stylePreset} onChange={setStylePreset} options={STYLE_PRESETS.map(p=>({label:p.label, value:p.value}))} />
-            </div>
-            <div>
-              <Label htmlFor="mood">Mood</Label>
-              <Select id="mood" value={mood} onChange={setMood} options={[{label:"—", value:""}, ...MOODS.map(m=>({label:m, value:m}))]} />
-            </div>
-            <div>
-              <Label htmlFor="details">Extra details</Label>
-              <Input id="details" placeholder="high detail, realistic textures, subtle film grain" value={details} onChange={(e)=>setDetails(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="lens">Lens</Label>
-              <Select id="lens" value={lens} onChange={setLens} options={[{label:"—", value:""}, ...CAMERA_LENSES.map(l=>({label:l, value:l}))]} />
-            </div>
-            <div>
-              <Label htmlFor="lighting">Lighting</Label>
-              <Select id="lighting" value={lighting} onChange={setLighting} options={[{label:"—", value:""}, ...LIGHTING.map(l=>({label:l, value:l}))]} />
-            </div>
-            <div>
-              <Label htmlFor="composition">Composition</Label>
-              <Select id="composition" value={composition} onChange={setComposition} options={[{label:"—", value:""}, ...COMPOSITIONS.map(c=>({label:c, value:c}))]} />
-            </div>
-            <div>
-              <Label>Artists</Label>
-              <div className="flex gap-2 mb-2">
-                {ARTISTS.map(a => (
-                  <Button key={a} className={`bg-white border text-gray-800 ${artists.includes(a)?"ring-2 ring-indigo-400":""}`} onClick={()=>addArtist(a)}>{a}</Button>
-                ))}
-              </div>
-              <div className="flex flex-wrap">
-                {artists.map(a => <Chip key={a} onRemove={()=>removeArtist(a)}>{a}</Chip>)}
-              </div>
-            </div>
-            <div className="md:col-span-2">
-              <Label>Materials & custom tags</Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {MATERIALS.map(m => (
-                  <Button key={m} className={`bg-white border text-gray-800 ${materials.includes(m)?"ring-2 ring-indigo-400":""}`} onClick={()=>toggleList(m, materials, setMaterials)}>{m}</Button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input placeholder="Add custom tag e.g. subsurface scattering" value={tagInput} onChange={(e)=>setTagInput(e.target.value)} />
-                <Button icon={Plus} className="bg-white border text-gray-800" onClick={()=>{ if(tagInput.trim()){ setCustomTags(prev=>Array.from(new Set([...prev, tagInput.trim()]))); setTagInput("");}}}>Add</Button>
-              </div>
-              <div className="mt-2 flex flex-wrap">
-                {customTags.map(t => <Chip key={t} onRemove={()=>setCustomTags(prev=>prev.filter(x=>x!==t))}>{t}</Chip>)}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white rounded-2xl p-4 shadow-sm">
-            <div>
-              <Label htmlFor="ar">Aspect ratio</Label>
-              <Select id="ar" value={ar} onChange={setAr} options={["1:1","3:2","4:5","16:9","21:9"].map(v=>({label:v, value:v}))} />
-            </div>
-            <div>
-              <Label htmlFor="quality">Quality</Label>
-              <Select id="quality" value={quality} onChange={setQuality} options={["draft","standard","high"].map(v=>({label:v, value:v}))} />
-            </div>
-            <div>
-              <Label htmlFor="seed">Seed (optional)</Label>
-              <Input id="seed" placeholder="e.g. 12345" value={seed} onChange={(e)=>setSeed(e.target.value.replace(/[^0-9-]/g, ''))} />
-            </div>
-            <div className="md:col-span-3">
-              <Label htmlFor="negative">Negative prompt</Label>
-              <Textarea id="negative" value={negative} onChange={(e)=>setNegative(e.target.value)} />
-            </div>
-            <div className="md:col-span-3">
-              <Label htmlFor="extras">Model-specific flags</Label>
-              <Input id="extras" placeholder="e.g. --stylize 300 --cfg 6.5" value={extras} onChange={(e)=>setExtras(e.target.value)} />
-            </div>
+            <p className="text-xs text-gray-500">Tip: paste the negative prompt into models that support it (e.g., Stable Diffusion variants).</p>
           </div>
         </div>
+      </section>
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-semibold">Generated Prompt</h2>
-              <div className="flex gap-2">
-                <Button icon={Copy} className="bg-white border text-gray-800" onClick={()=>copy(prompt)}>Copy</Button>
-                <Button icon={Download} className="bg-white border text-gray-800" onClick={()=>download("prompt.json", JSON.stringify(jsonSchema, null, 2))}>Export JSON</Button>
+      {/* REVIEWS */}
+      <section className="bg-white rounded-3xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold mb-3">What creators say</h3>
+        <div className="grid md:grid-cols-3 gap-4">
+          {REVIEWS.map((r, i)=> (
+            <div key={i} className="rounded-2xl border p-4">
+              <div className="text-yellow-500 mb-1" aria-label={`${r.stars} stars`}>
+                {Array.from({length:r.stars}).map((_,i)=> <span key={i}>★</span>)}
               </div>
+              <p className="text-sm text-gray-800">“{r.quote}”</p>
+              <div className="text-xs text-gray-500 mt-3">{r.name} · {r.role}</div>
             </div>
-            <Textarea readOnly value={prompt} className="min-h-[160px] font-mono" />
-            <p className="text-xs text-gray-500 mt-2">Tip: paste the "negative" field below into models that support it (e.g., Stable Diffusion variants).</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-sm font-semibold mb-2">Negative Prompt</h3>
-            <Textarea readOnly value={negative} className="min-h-[80px] font-mono" />
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-sm font-semibold mb-3">Quick Starters</h3>
-            <div className="grid grid-cols-1 gap-2">
-              {[{
-                title: "Logo-in-a-circle (great for avatars)",
-                fill: {
-                  subject: "a clean, minimal line-art tooth logo inside a circle, centered",
-                  action: "",
-                  environment: "plain background, high contrast",
-                  details: "vector style, crisp edges, smooth curves",
-                  mood: "serene",
-                  stylePreset: STYLE_PRESETS[6].value,
-                  lens: "",
-                  lighting: "overcast",
-                  composition: "centered",
-                }
-              },{
-                title: "Cinematic character portrait",
-                fill: {
-                  subject: "young woman astronaut in slightly worn suit",
-                  action: "gazing toward distant nebula",
-                  environment: "inside a dim spacecraft window with stars",
-                  details: "subtle film grain, pores, freckles, realistic skin",
-                  mood: "dramatic",
-                  stylePreset: STYLE_PRESETS[1].value,
-                  lens: "85mm",
-                  lighting: "rim light",
-                  composition: "rule of thirds",
-                }
-              },{
-                title: "Scientific product render",
-                fill: {
-                  subject: "transparent dental aligner on a reflective surface",
-                  action: "",
-                  environment: "studio cyclorama",
-                  details: "caustics, subsurface scattering, specular highlights",
-                  mood: "serene",
-                  stylePreset: STYLE_PRESETS[0].value,
-                  lens: "50mm",
-                  lighting: "softbox",
-                  composition: "close-up",
-                }
-              }].map((q,i)=> (
-                <Button key={i} className="bg-white border text-gray-800 justify-between" onClick={()=>{
-                  setSubject(q.fill.subject||"");
-                  setAction(q.fill.action||"");
-                  setEnvironment(q.fill.environment||"");
-                  setDetails(q.fill.details||"");
-                  setMood(q.fill.mood||"");
-                  setStylePreset(q.fill.stylePreset||STYLE_PRESETS[0].value);
-                  setLens(q.fill.lens||"");
-                  setLighting(q.fill.lighting||"");
-                  setComposition(q.fill.composition||"");
-                }}>
-                  <span>{q.title}</span>
-                  <WandSparkles size={16} />
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-sm font-semibold mb-2">How to use with common models</h3>
-            <ul className="list-disc ml-5 text-sm text-gray-700 space-y-1">
-              <li><strong>Stable Diffusion (WebUIs):</strong> Paste <em>Generated Prompt</em> into "Prompt" and <em>Negative Prompt</em> into its field. Map <code>--ar</code> to width/height, <code>--seed</code> to Seed.</li>
-              <li><strong>Midjourney-style:</strong> Use the suffix flags as-is if your runner supports them, or remove if not.</li>
-              <li><strong>DALL·E / Firefly:</strong> Use <em>Generated Prompt</em> only; ignore negative/flags.</li>
-            </ul>
-          </div>
+          ))}
         </div>
+      </section>
+    </div>
+  );
+}
+
+function PricingPage(){
+  return (
+    <div className="space-y-6">
+      <section className="bg-white rounded-3xl p-6 shadow-sm">
+        <h1 className="text-2xl font-semibold mb-1">Choose your plan</h1>
+        <p className="text-sm text-gray-600 mb-4">Start free. Upgrade when you’re ready.</p>
+        <div className="grid md:grid-cols-2 gap-6">
+          {PLANS.map((p)=> (
+            <div key={p.name} className="rounded-3xl border p-6">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <div className="text-xl font-semibold">{p.name}</div>
+                  <div className="text-sm text-gray-500">{p.tagline}</div>
+                </div>
+                <div className="text-2xl font-bold">{p.price}</div>
+              </div>
+              <ul className="mt-4 space-y-2 text-sm text-gray-700 list-disc ml-5">
+                {p.features.map((f,i)=>(<li key={i}>{f}</li>))}
+              </ul>
+              <a href={p.cta.href} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-indigo-600 text-white px-4 py-2 text-sm hover:shadow">
+                {p.cta.label}
+              </a>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default function App(){
+  const [path, navigate] = useHashRoute("#/");
+  return (
+    <div className="min-h-screen w-full bg-gradient-to-b from-white to-indigo-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <Navbar path={path} navigate={navigate} />
+        {path === "#/pricing" ? <PricingPage/> : <HomePage/>}
+        <footer className="text-xs text-gray-500 mt-10 text-center">© {new Date().getFullYear()} Prompt Workshop</footer>
       </div>
     </div>
   );

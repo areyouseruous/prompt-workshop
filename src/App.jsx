@@ -163,12 +163,51 @@ function HomePage(){
     setAr(["1:1","3:2","4:5","16:9","21:9","9:16"][Math.floor(Math.random()*6)]);
   };
 
-  const handleSend = () => {
-    const prompt = buildPrompt({
-      subject, action, environment, stylePreset, mood, details, lens, lighting, composition, extras, negative, ar, quality, seed: seed === "" ? undefined : Number(seed)
+const handleSend = async () => {
+  try {
+    // Build a minimal idea from current inputs
+    const pieces = [subject, action, environment].filter(Boolean).join(", ");
+    const idea = pieces || subject || "";
+
+    // Ask the serverless optimizer (OpenAI) to expand the prompt
+    const resp = await fetch('/api/optimize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idea,
+        fields: { style: stylePreset, mood, lens, lighting, composition, ar }
+      })
     });
-    setOptimized(prompt);
-  };
+
+    // If the API fails, fall back to the local builder
+    if (!resp.ok) {
+      const fallback = buildPrompt({
+        subject, action, environment, stylePreset, mood, details, lens, lighting,
+        composition, extras, negative, ar, quality, seed: seed === "" ? undefined : Number(seed)
+      });
+      setOptimized(fallback);
+      return;
+    }
+
+    const data = await resp.json();
+    const ai = (data && data.prompt) ? String(data.prompt) : '';
+    if (ai.trim()) {
+      setOptimized(ai.trim());
+    } else {
+      const fallback = buildPrompt({
+        subject, action, environment, stylePreset, mood, details, lens, lighting,
+        composition, extras, negative, ar, quality, seed: seed === "" ? undefined : Number(seed)
+      });
+      setOptimized(fallback);
+    }
+  } catch (e) {
+    const fallback = buildPrompt({
+      subject, action, environment, stylePreset, mood, details, lens, lighting,
+      composition, extras, negative, ar, quality, seed: seed === "" ? undefined : Number(seed)
+    });
+    setOptimized(fallback);
+  }
+};
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(optimized); setCopied(true); setTimeout(()=>setCopied(false), 1200); } catch {}
